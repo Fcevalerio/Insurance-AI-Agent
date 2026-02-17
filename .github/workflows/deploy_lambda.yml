@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'Lambda_functions/**'
+      - '.github/workflows/deploy_lambda.yml'
 
 jobs:
   deploy:
