@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: NorthStar Agentic AI - Lambda Backend
+
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 15
+    MemorySize: 256
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: S3 bucket containing insurance data
+
+  ClaimsPrefix:
+    Type: String
+    Description: S3 prefix for claims data
+
+  InsuranceDataPrefix:
+    Type: String
+    Description: S3 prefix for policies and rules data
+
+  AwsRegion:
+    Type: String
+    Description: AWS Region
+
+Resources:
+
+  #########################################
+  # Get Policy Details Lambda
+  #########################################
+
+  GetPolicyDetailsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: northstar-get-policy-details
+      CodeUri: get_policy_details/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          DATA_PREFIX: !Ref InsuranceDataPrefix
+          AWS_REGION: !Ref AwsRegion
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref BucketName
+
+  #########################################
+  # Check Document Requirements Lambda
+  #########################################
+
+  CheckDocumentRequirementsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: northstar-check-document-requirements
+      CodeUri: check_document_requirements/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          DATA_PREFIX: !Ref InsuranceDataPrefix
+          AWS_REGION: !Ref AwsRegion
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref BucketName
+
+  #########################################
+  # Get Claim Status Lambda
+  #########################################
+
+  GetClaimStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: northstar-get-claim-status
+      CodeUri: get_claim_status/
+      Handler: app.lambda_handler
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref BucketName
+          CLAIMS_PREFIX: !Ref ClaimsPrefix
+          AWS_REGION: !Ref AwsRegion
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref BucketName
+
+Outputs:
+
+  GetPolicyDetailsFunctionArn:
+    Description: ARN of GetPolicyDetails Lambda
+    Value: !GetAtt GetPolicyDetailsFunction.Arn
+
+  CheckDocumentRequirementsFunctionArn:
+    Description: ARN of CheckDocumentRequirements Lambda
+    Value: !GetAtt CheckDocumentRequirementsFunction.Arn
+
+  GetClaimStatusFunctionArn:
+    Description: ARN of GetClaimStatus Lambda
+    Value: !GetAtt GetClaimStatusFunction.Arn
