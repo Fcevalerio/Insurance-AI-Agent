@@ -125,6 +125,8 @@ Resources:
           CHECK_DOC_FUNCTION: !Ref CheckDocumentRequirementsFunction
           GET_CLAIM_FUNCTION: !Ref GetClaimStatusFunction
           CONVERSATION_TABLE: !Ref DynamoTable
+          OPENSEARCH_ENDPOINT: !Ref OpenSearchEnpoint
+          RAG_INDEX: !Ref RAGIndex
       Policies:
         - LambdaInvokePolicy:
             FunctionName: agent-get-policy-details
