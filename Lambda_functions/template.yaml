@@ -33,21 +33,21 @@ Parameters:
     Type: String
     Description: Fallback Model for Agent
   
-  GetPolicyFunction:
-    Type: String
-    Description: Policy Lambda Function
-  
-  CheckDocFunction:
-    Type: String
-    Description: Check Doc Lambda Function
-  
-  GetClaimFunction:
-    Type: String
-    Description: Get Claim Lambda Function
-    
   DynamoTable:
     Type: String
     Description: DymanoDB Storage for LLM Response
+  
+  RAGIndex:
+    Type: String
+    Description: OpenSearch Index Name
+  
+  OpenSearchEnpoint:
+    Type: String
+    Description: OpenSearch Collection Endpoint
+
+  RAGFolder:
+    Type: String
+    Description: Folder inside the bucket for RAG PDFs (e.g. policies/)
 
 Resources:
 
@@ -146,6 +146,54 @@ Resources:
           Properties:
             Path: /agent
             Method: post
+    
+  #########################################
+  # RAG Ingestion Lambda (EventBridge)
+  #########################################
+
+  RagIngestionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: agent-rag-ingestion
+      CodeUri: rag_ingestion/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Timeout: 60
+      MemorySize: 512
+      Environment:
+        Variables:
+          RAG_INDEX: !Ref RAGIndex
+          OPENSEARCH_ENDPOINT: !Ref OpenSearchEnpoint
+          RAG_BUCKET: !Ref BucketName
+          RAG_FOLDER: !Ref RAGFolder
+      Policies:
+        - S3ReadPolicy:
+            BucketName: !Ref BucketName
+        - Statement:
+            - Effect: Allow
+              Action:
+                - bedrock:InvokeModel
+                - aoss:APIAccessAll
+              Resource: "*"
+      Events:
+        RagS3Event:
+          Type: EventBridgeRule
+          Properties:
+            Pattern:
+              source:
+                - aws.s3
+              detail-type:
+                - Object Created
+                - Object Updated
+              detail:
+                bucket:
+                  name:
+                    - !Ref BucketName
+                object:
+                  key:
+                    - prefix: !Sub "${RAGFolder}/"
+                    - suffix: ".pdf"
+
 
   #########################################
   # Dynamo DB for Conversations
@@ -166,7 +214,7 @@ Resources:
           KeyType: HASH
         - AttributeName: timestamp
           KeyType: RANGE
-  
+
 Outputs:
 
   GetPolicyDetailsFunctionArn:

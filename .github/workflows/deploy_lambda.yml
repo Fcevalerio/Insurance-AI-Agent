@@ -24,7 +24,7 @@ jobs:
         uses: aws-actions/setup-sam@v2
 
       - name: SAM Build
-        run: sam build --template-file Lambda_functions/template.yaml
+        run: sam build --use-container --template-file Lambda_functions/template.yaml
 
       - name: SAM Deploy
         run: |
@@ -47,4 +47,7 @@ jobs:
               GetPolicyFunction=${{ secrets.GET_POLICY_FUNCTION }} \
               CheckDocFunction=${{ secrets.CHECK_DOC_FUNCTION }} \
               GetClaimFunction=${{ secrets.GET_CLAIM_FUNCTION }} \
-              DynamoTable=${{ secrets.CONVERSATION_TABLE }}
+              DynamoTable=${{ secrets.CONVERSATION_TABLE }} \
+              OpenSearchEnpoint=${{ secrets.OPENSEARCH_ENDPOINT }} \
+              RAGIndex=${{ secrets.RAG_INDEX }} \ 
+              RAGFolder=${{ secrets.RAG_FOLDER }}
