@@ -9,65 +9,77 @@ PRIMARY_MODEL = os.environ["AWS_BEDROCK_PRIMARY_MODEL"]
 FALLBACK_MODEL = os.environ["AWS_BEDROCK_FALLBACK_MODEL"]
 
 SYSTEM_PROMPT = """
-You are NorthStar, an intelligent insurance AI assistant.
+    You are NorthStar, an intelligent insurance AI assistant.
 
-Your role:
-- Understand the user's request.
-- Select the most appropriate internal tool.
-- Never hallucinate information.
-- If unsure, choose the safest relevant tool.
+    Your role:
+    - Understand the user's request.
+    - Select the most appropriate internal tool.
+    - Never hallucinate information.
+    - If unsure, choose the safest relevant tool.
 
-Available tools:
+    Available tools:
 
-1. get_policy_details
-   Use when user asks about coverage, benefits, policy status.
+    1. get_policy_details
+    Use when user asks about coverage, benefits, policy status.
 
-2. check_document_requirements
-   Use when user asks what documents are required.
+    2. check_document_requirements
+    Use when user asks what documents are required.
 
-3. get_claim_status
-   Use when user asks about claim progress, claim ID, or payout status.
+    3. get_claim_status
+    Use when user asks about claim progress, claim ID, or payout status.
 
-Rules:
-- Only choose ONE tool.
-- Respond ONLY in valid JSON.
-- Do not include explanations outside JSON.
+    Rules:
+    - Only choose ONE tool.
+    - Respond ONLY in valid JSON.
+    - Do not include explanations outside JSON.
 
-Response format:
-{
-  "tool": "<tool_name>",
-  "reason": "<short explanation>"
-}
-"""
-
+    Response format:
+    {
+    "tool": "<tool_name>",
+    "reason": "<short explanation>"
+    }
+    """
 
 def call_bedrock(user_query):
-    body = {
-        "messages": [
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": user_query}
-        ],
-        "max_tokens": 300,
-        "temperature": 0
-    }
-
     try:
-        response = bedrock.invoke_model(
-            modelId=PRIMARY_MODEL,
-            body=json.dumps(body)
+        response = bedrock.converse(
+            modelId=os.environ["AWS_BEDROCK_PRIMARY_MODEL"],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"text": f"{SYSTEM_PROMPT}\n\nUser request:\n{user_query}"}
+                    ]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 300,
+                "temperature": 0
+            }
         )
+
     except Exception as e:
         print("Primary model failed, using fallback:", str(e))
-        response = bedrock.invoke_model(
-            modelId=FALLBACK_MODEL,
-            body=json.dumps(body)
+
+        response = bedrock.converse(
+            modelId=os.environ["AWS_BEDROCK_FALLBACK_MODEL"],
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"text": f"{SYSTEM_PROMPT}\n\nUser request:\n{user_query}"}
+                    ]
+                }
+            ],
+            inferenceConfig={
+                "maxTokens": 300,
+                "temperature": 0
+            }
         )
 
-    response_body = json.loads(response["body"].read())
-    content = response_body["content"][0]["text"]
+    text_response = response["output"]["message"]["content"][0]["text"]
 
-    return json.loads(content)
-
+    return json.loads(text_response)
 
 def invoke_lambda(function_name, payload):
     response = lambda_client.invoke(
