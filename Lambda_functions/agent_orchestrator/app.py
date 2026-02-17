@@ -20,7 +20,7 @@ def log(stage, data):
     logger.info(json.dumps({"stage": stage, "data": data}))
 
 # =====================================================
-# Environment Validation
+# Environment
 # =====================================================
 
 def get_env(name, required=True):
@@ -39,7 +39,6 @@ GET_CLAIM_FUNCTION = get_env("GET_CLAIM_FUNCTION")
 
 CONVERSATION_TABLE = get_env("CONVERSATION_TABLE")
 
-# RAG
 OPENSEARCH_ENDPOINT = get_env("OPENSEARCH_ENDPOINT")
 RAG_INDEX = get_env("RAG_INDEX")
 
@@ -52,20 +51,24 @@ AWS_REGION = os.environ.get("AWS_REGION", "eu-north-1")
 lambda_client = boto3.client("lambda")
 bedrock = boto3.client("bedrock-runtime", region_name=AWS_REGION)
 dynamodb = boto3.resource("dynamodb")
-
 table = dynamodb.Table(CONVERSATION_TABLE)
 
-# OpenSearch Auth
-session = boto3.Session()
-credentials = session.get_credentials()
+# =====================================================
+# OpenSearch Auth (Refreshable)
+# =====================================================
 
-awsauth = AWS4Auth(
-    credentials.access_key,
-    credentials.secret_key,
-    AWS_REGION,
-    "aoss",
-    session_token=credentials.token
-)
+def get_awsauth():
+    session = boto3.Session()
+    credentials = session.get_credentials()
+    frozen = credentials.get_frozen_credentials()
+
+    return AWS4Auth(
+        frozen.access_key,
+        frozen.secret_key,
+        AWS_REGION,
+        "aoss",
+        session_token=frozen.token
+    )
 
 # =====================================================
 # Utilities
@@ -81,7 +84,7 @@ def safe_json(text):
         raise
 
 # =====================================================
-# Embedding (Titan v2)
+# Embedding
 # =====================================================
 
 def embed_text(text):
@@ -96,7 +99,7 @@ def embed_text(text):
     return result["embedding"]
 
 # =====================================================
-# OpenSearch Retrieval
+# RAG Retrieval
 # =====================================================
 
 def retrieve_context(query, top_k=3):
@@ -117,7 +120,7 @@ def retrieve_context(query, top_k=3):
 
         response = requests.post(
             f"{OPENSEARCH_ENDPOINT}/{RAG_INDEX}/_search",
-            auth=awsauth,
+            auth=get_awsauth(),
             json=search_body,
             timeout=5
         )
@@ -127,8 +130,10 @@ def retrieve_context(query, top_k=3):
             return []
 
         hits = response.json().get("hits", {}).get("hits", [])
+        texts = [h["_source"].get("text", "") for h in hits if "_source" in h]
 
-        return [h["_source"]["text"] for h in hits]
+        log("rag_hits", len(texts))
+        return texts
 
     except Exception as e:
         log("rag_exception", str(e))
@@ -138,7 +143,7 @@ def retrieve_context(query, top_k=3):
 # Bedrock Converse
 # =====================================================
 
-def call_model(model_id, prompt, temperature=0, max_tokens=700):
+def call_model(model_id, prompt, temperature=0.2, max_tokens=700):
     start = time.time()
 
     response = bedrock.converse(
@@ -212,13 +217,11 @@ def build_router_prompt(user_query):
     """
 
 def route_query(query):
-    prompt = build_router_prompt(query)
-
     try:
-        raw = call_model(ROUTER_MODEL, prompt, temperature=0)
+        raw = call_model(ROUTER_MODEL, build_router_prompt(query), temperature=0)
     except Exception as e:
         log("router_primary_failed", str(e))
-        raw = call_model(FALLBACK_MODEL, prompt, temperature=0)
+        raw = call_model(FALLBACK_MODEL, build_router_prompt(query), temperature=0)
 
     decision = safe_json(raw)
     log("routing_decision", decision)
@@ -228,17 +231,26 @@ def route_query(query):
 # Tool Invocation
 # =====================================================
 
-def invoke_lambda(function_name, payload):
+def invoke_tool(decision, query):
+    mapping = {
+        "get_policy_details": GET_POLICY_FUNCTION,
+        "check_document_requirements": CHECK_DOC_FUNCTION,
+        "get_claim_status": GET_CLAIM_FUNCTION
+    }
+
+    function_name = mapping.get(decision.get("tool"))
+    if not function_name:
+        return {"error": "Invalid tool"}
+
     start = time.time()
 
     response = lambda_client.invoke(
         FunctionName=function_name,
         InvocationType="RequestResponse",
-        Payload=json.dumps(payload)
+        Payload=json.dumps({"query": query})
     )
 
     result = json.loads(response["Payload"].read())
-
     latency = round(time.time() - start, 3)
     log("tool_call", {"function": function_name, "latency": latency})
 
@@ -249,21 +261,6 @@ def invoke_lambda(function_name, payload):
             return result["body"]
 
     return result
-
-def invoke_tool(decision, query):
-    mapping = {
-        "get_policy_details": GET_POLICY_FUNCTION,
-        "check_document_requirements": CHECK_DOC_FUNCTION,
-        "get_claim_status": GET_CLAIM_FUNCTION
-    }
-
-    tool = decision.get("tool")
-    function_name = mapping.get(tool)
-
-    if not function_name:
-        return {"error": "Invalid tool selected"}
-
-    return invoke_lambda(function_name, {"query": query})
 
 # =====================================================
 # Memory
@@ -302,6 +299,20 @@ def build_synthesis_prompt(user_query, tool_result, history, rag_context):
     You operate inside a regulated insurance environment.
     Accuracy is critical.
 
+    Instructions:
+
+    1. Use ONLY verified system data and retrieved documents.
+    2. Do NOT invent coverage, limits, dates, or amounts.
+    3. DO NOT use general industry knowledge.
+    4. If information is missing, say clearly what is unavailable.
+    5. Maintain a professional, calm, and clear tone.
+    6. Provide concise but complete explanations.
+    7. Avoid internal technical wording.
+    8. Never mention internal tools or system architecture.
+    9. Incorporate relevant retrieved policy information if helpful.
+    10. If retrieved context conflicts with tool result, prioritize tool result.
+    11. If RAG context is empty, say you found no relevant references.
+
     Conversation history:
     {history_text}
 
@@ -314,19 +325,10 @@ def build_synthesis_prompt(user_query, tool_result, history, rag_context):
     Additional relevant policy documents:
     {rag_context}
 
-    Instructions:
-
-    1. Use ONLY the verified internal data provided.
-    2. Do NOT invent coverage, limits, dates, or amounts.
-    3. If information is missing, say clearly what is unavailable.
-    4. Maintain a professional, calm, and clear tone.
-    5. Provide concise but complete explanations.
-    6. Avoid internal technical wording.
-    7. Never mention internal tools or system architecture.
-    8. Incorporate relevant retrieved policy information if helpful.
-    9. If retrieved context conflicts with tool result, prioritize tool result.
-
     If the internal data contains an error field, explain politely that the request could not be fulfilled.
+    If neither tool data nor RAG context contains the answer,
+    respond:
+    "I did not find references to this in the policy documents."
 
     Your response should:
     - Directly answer the user.
@@ -335,18 +337,20 @@ def build_synthesis_prompt(user_query, tool_result, history, rag_context):
     """
 
 def generate_response(query, tool_result, history):
-    if isinstance(tool_result, dict) and "error" in tool_result:
-        return "I’m sorry, but I couldn’t retrieve the requested information."
 
-    rag_context = retrieve_context(query, top_k=3)
+    rag_context = retrieve_context(query)
+
+    # Hard guardrail: prevent hallucination
+    if not rag_context and (not tool_result or tool_result == {}):
+        return "I did not find references to this in the policy documents."
 
     prompt = build_synthesis_prompt(query, tool_result, history, rag_context)
 
     try:
-        return call_model(SYNTH_MODEL, prompt, temperature=0.4)
+        return call_model(SYNTH_MODEL, prompt, temperature=0.2)
     except Exception as e:
         log("synth_primary_failed", str(e))
-        return call_model(FALLBACK_MODEL, prompt, temperature=0.2)
+        return call_model(FALLBACK_MODEL, prompt, temperature=0.1)
 
 # =====================================================
 # Lambda Handler
@@ -369,6 +373,7 @@ def lambda_handler(event, context):
         history = get_history(session_id)
         decision = route_query(query)
         tool_result = invoke_tool(decision, query)
+
         final_answer = generate_response(query, tool_result, history)
 
         store_message(session_id, query, final_answer)
