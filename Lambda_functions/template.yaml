@@ -142,6 +142,11 @@ Resources:
               - bedrock:InvokeModel
               - bedrock:InvokeModelWithResponseStream
             Resource: "*"
+        - Statement:
+          - Effect: Allow
+            Action:
+              - aoss:APIAccessAll
+            Resource: "*"
       Events:
         AgentApi:
           Type: Api
