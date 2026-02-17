@@ -77,6 +77,36 @@ Resources:
         - S3ReadPolicy:
             BucketName: !Ref BucketName
 
+  #########################################
+  # Agent Orchestrator Lambda
+  #########################################
+
+  AgentOrchestratorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: northstar-agent-orchestrator
+      CodeUri: agent_orchestrator/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Environment:
+        Variables:
+          GET_POLICY_FUNCTION: agent-get-policy-details
+          CHECK_DOC_FUNCTION: agent-check-document-requirements
+          GET_CLAIM_FUNCTION: agent-get-claim-status
+      Policies:
+        - LambdaInvokePolicy:
+            FunctionName: agent-get-policy-details
+        - LambdaInvokePolicy:
+            FunctionName: agent-check-document-requirements
+        - LambdaInvokePolicy:
+            FunctionName: agent-get-claim-status
+      Events:
+        AgentApi:
+          Type: Api
+          Properties:
+            Path: /agent
+            Method: post
+  
 Outputs:
 
   GetPolicyDetailsFunctionArn:
