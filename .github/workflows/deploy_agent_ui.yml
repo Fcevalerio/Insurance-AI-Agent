@@ -1,0 +1,100 @@
+name: Deploy NorthStar Agent UI to Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Web_interface/**'
+      - '.github/workflows/deploy_agent_ui.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # --------------------------------------------------
+      # 1. Checkout Repository
+      # --------------------------------------------------
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # --------------------------------------------------
+      # 2. Configure AWS Credentials
+      # --------------------------------------------------
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # --------------------------------------------------
+      # 3. Install Elastic Beanstalk CLI
+      # --------------------------------------------------
+      - name: Install EB CLI
+        run: |
+          pip install --upgrade awsebcli
+
+      # --------------------------------------------------
+      # 4. EB Init + Create Application + Load Balanced Environment
+      # --------------------------------------------------
+      - name: EB Init & Environment Setup
+        working-directory: Web_interface
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+
+          eb init insurance-agent-ui \
+            --platform docker \
+            --region $AWS_REGION \
+            --quiet
+
+          # Create application if it doesn't exist
+          if ! aws elasticbeanstalk describe-applications \
+              --application-names insurance-agent-ui \
+              --region $AWS_REGION \
+              --query 'Applications[*].ApplicationName' \
+              --output text | grep -q insurance-agent-ui; then
+
+            aws elasticbeanstalk create-application \
+              --application-name insurance-agent-ui \
+              --region $AWS_REGION
+          fi
+
+          # Create Load Balanced environment if missing
+          if ! aws elasticbeanstalk describe-environments \
+              --application-name insurance-agent-ui \
+              --environment-names insurance-agent-ui-env \
+              --region $AWS_REGION \
+              --query 'Environments[*].EnvironmentName' \
+              --output text | grep -q insurance-agent-ui-env; then
+
+            eb create insurance-agent-ui-env \
+              --platform docker \
+              --elb-type application \
+              --region $AWS_REGION \
+              --quiet
+          fi
+
+          eb use insurance-agent-ui-env --quiet
+
+      # --------------------------------------------------
+      # 5. Deploy Application
+      # --------------------------------------------------
+      - name: Deploy Streamlit UI
+        working-directory: Web_interface
+        run: |
+          eb deploy --staged --verbose
+
+      # --------------------------------------------------
+      # 6. Configure Environment Variables
+      # --------------------------------------------------
+      - name: Configure Environment Variables
+        working-directory: Web_interface
+        run: |
+          eb setenv \
+            AGENT_API=${{ secrets.AGENT_API }} \
+            CONVERSATION_TABLE=${{ secrets.CONVERSATION_TABLE }} \
+            AWS_REGION=${{ secrets.AWS_REGION }} \
+            AGENT_API=${{ secrets.AGENT_API }}
