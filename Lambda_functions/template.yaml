@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description: NorthStar Agentic AI - Lambda Backend
+Description: Agentic AI - Lambda Backend
 
 Globals:
   Function:
@@ -84,7 +84,7 @@ Resources:
   AgentOrchestratorFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: northstar-agent-orchestrator
+      FunctionName: agent-orchestrator
       CodeUri: agent_orchestrator/
       Handler: app.lambda_handler
       Runtime: python3.12

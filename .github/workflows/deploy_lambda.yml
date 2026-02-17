@@ -30,7 +30,7 @@ jobs:
         run: |
           sam deploy \
             --template-file Lambda_functions/template.yaml \
-            --stack-name northstar-agentic-demo \
+            --stack-name insurance-agentic-demo \
             --s3-bucket ${{ secrets.AWS_SAM_ARTIFACT_BUCKET }} \
             --no-confirm-changeset \
             --no-fail-on-empty-changeset \
