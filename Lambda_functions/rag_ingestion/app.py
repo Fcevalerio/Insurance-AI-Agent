@@ -3,6 +3,7 @@ import boto3
 import os
 import uuid
 import requests
+from io import BytesIO
 from pypdf import PdfReader
 from requests_aws4auth import AWS4Auth
 
@@ -34,16 +35,19 @@ awsauth = AWS4Auth(
 
 def extract_text_from_pdf(bucket, key):
     obj = s3.get_object(Bucket=bucket, Key=key)
-    reader = PdfReader(obj["Body"])
-    text = ""
 
+    pdf_bytes = obj["Body"].read()
+    pdf_stream = BytesIO(pdf_bytes)
+
+    reader = PdfReader(pdf_stream)
+
+    text = ""
     for page in reader.pages:
         extracted = page.extract_text()
         if extracted:
             text += extracted + "\n"
 
     return text.strip()
-
 # ------------------------------------------------
 # Chunk Text
 # ------------------------------------------------
