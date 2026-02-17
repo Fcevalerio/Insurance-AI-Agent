@@ -216,39 +216,121 @@ def route_query(query):
     return decision
 
 # =====================================================
+# Entity Extraction
+# =====================================================
+
+def build_extraction_prompt(query, tool_name):
+    return f"""
+    You are an argument extraction engine.
+
+    Extract structured arguments required for the tool:
+    {tool_name}
+
+    Rules:
+    - Return ONLY valid JSON
+    - Do NOT explain
+    - Do NOT include extra text
+    - If a value is missing, return null
+
+    Tool requirements:
+
+    get_policy_details:
+        - policy_id (string)
+
+    get_claim_status:
+        - claim_id (string)
+
+    check_document_requirements:
+        - policy_id (string)
+
+    User query:
+    \"\"\"{query}\"\"\"
+
+    Response format:
+    {{
+      "arguments": {{ ... }}
+    }}
+    """
+
+def extract_arguments(query, tool_name):
+    prompt = build_extraction_prompt(query, tool_name)
+
+    try:
+        raw = call_model(SYNTH_MODEL, prompt, temperature=0)
+    except Exception as e:
+        log("extraction_failed", str(e))
+        return {}
+
+    parsed = safe_json(raw)
+    return parsed.get("arguments", {})
+
+# =====================================================
 # Tool Invocation
 # =====================================================
 
-def invoke_tool(decision, query):
+def invoke_tool(decision, query, arguments=None):
     mapping = {
         "get_policy_details": GET_POLICY_FUNCTION,
         "check_document_requirements": CHECK_DOC_FUNCTION,
         "get_claim_status": GET_CLAIM_FUNCTION
     }
 
-    function_name = mapping.get(decision.get("tool"))
+    tool_name = decision.get("tool")
+    function_name = mapping.get(tool_name)
+
     if not function_name:
-        return {"error": "Invalid tool"}
+        log("invalid_tool", {"tool": tool_name})
+        return {"error": "Invalid tool selected"}
+
+    payload = arguments if arguments else {"query": query}
 
     start = time.time()
 
-    response = lambda_client.invoke(
-        FunctionName=function_name,
-        InvocationType="RequestResponse",
-        Payload=json.dumps({"query": query})
-    )
+    try:
+        response = lambda_client.invoke(
+            FunctionName=function_name,
+            InvocationType="RequestResponse",
+            Payload=json.dumps(payload)
+        )
 
-    result = json.loads(response["Payload"].read())
-    latency = round(time.time() - start, 3)
-    log("tool_call", {"function": function_name, "latency": latency})
+        status_code = response.get("StatusCode")
 
-    if isinstance(result, dict) and "body" in result:
-        try:
-            return json.loads(result["body"])
-        except Exception:
-            return result["body"]
+        if status_code != 200:
+            log("lambda_status_error", {
+                "function": function_name,
+                "status": status_code
+            })
+            return {"error": "Downstream service error"}
 
-    return result
+        raw_payload = response["Payload"].read()
+        result = json.loads(raw_payload)
+
+        # If Lambda returned an error
+        if response.get("FunctionError"):
+            log("lambda_function_error", {
+                "function": function_name,
+                "error": result
+            })
+            return {"error": "Downstream function execution failed"}
+
+        latency = round(time.time() - start, 3)
+        log("tool_call", {
+            "function": function_name,
+            "latency": latency
+        })
+
+        # Unwrap API Gateway style responses
+        if isinstance(result, dict) and "body" in result:
+            try:
+                return json.loads(result["body"])
+            except Exception:
+                return {"error": "Invalid downstream response format"}
+
+        return result
+
+    except Exception as e:
+        log("lambda_invoke_exception", str(e))
+        return {"error": "Tool invocation failed"}
 
 # =====================================================
 # Memory
@@ -355,7 +437,13 @@ def lambda_handler(event, context):
 
         history = get_history(session_id)
         decision = route_query(query)
-        tool_result = invoke_tool(decision, query)
+        tool_name = decision.get("tool")
+
+        arguments = extract_arguments(query, tool_name)
+
+        log("extracted_arguments", arguments)
+
+        tool_result = invoke_tool(decision, query, arguments)
 
         final_answer = generate_response(query, tool_result, history)
 
