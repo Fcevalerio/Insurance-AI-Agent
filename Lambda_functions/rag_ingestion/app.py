@@ -85,16 +85,19 @@ def embed_text(text):
 def index_chunk(chunk_id, text, metadata):
     vector = embed_text(text)
 
-    payload = {
+    document = {
         "text": text,
         "embedding": vector,
         "metadata": metadata
     }
 
+    url = f"{OPENSEARCH_ENDPOINT}/{INDEX_NAME}/_doc/{chunk_id}"
+
     response = requests.put(
-        f"{OPENSEARCH_ENDPOINT}/{INDEX_NAME}/_doc/{chunk_id}",
+        url,
         auth=awsauth,
-        json=payload
+        headers={"Content-Type": "application/json"},
+        json=document
     )
 
     if response.status_code not in [200, 201]:
