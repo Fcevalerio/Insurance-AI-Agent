@@ -1,0 +1,10 @@
+# Data Manipulation
+numpy
+pandas
+
+# Database
+boto3
+sqlalchemy
+
+# Web Framework
+requests
