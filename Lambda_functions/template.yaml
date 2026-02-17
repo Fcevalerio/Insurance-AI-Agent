@@ -20,6 +20,14 @@ Parameters:
   InsuranceDataPrefix:
     Type: String
     Description: S3 prefix for policies and rules data
+    
+  BedrockPrimaryModel:
+    Type: String
+    Description: BedRock Model to be used in Agent
+  
+  BedrockFallbackModel:
+    Type: String
+    Description: Fallback Model for Agent
 
 Resources:
 
@@ -93,6 +101,8 @@ Resources:
           GET_POLICY_FUNCTION: agent-get-policy-details
           CHECK_DOC_FUNCTION: agent-check-document-requirements
           GET_CLAIM_FUNCTION: agent-get-claim-status
+          AWS_BEDROCK_PRIMARY_MODEL: !Ref BedrockPrimaryModel
+          AWS_BEDROCK_FALLBACK_MODEL: !Ref BedrockFallbackModel
       Policies:
         - LambdaInvokePolicy:
             FunctionName: agent-get-policy-details
@@ -100,6 +110,11 @@ Resources:
             FunctionName: agent-check-document-requirements
         - LambdaInvokePolicy:
             FunctionName: agent-get-claim-status
+        - Statement:
+          - Effect: Allow
+            Action:
+              - bedrock:InvokeModel
+            Resource: "*"
       Events:
         AgentApi:
           Type: Api

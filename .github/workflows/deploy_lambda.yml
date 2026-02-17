@@ -39,4 +39,6 @@ jobs:
               BucketName=${{ secrets.AWS_S3_BUCKET_NAME }} \
               ClaimsPrefix=${{ secrets.AWS_CLAIMS_DATA }} \
               InsuranceDataPrefix=${{ secrets.AWS_INSURANCE_DATA }} \
-              AwsRegion=${{ secrets.AWS_REGION }}
+              AwsRegion=${{ secrets.AWS_REGION }} \
+              BedrockPrimaryModel=${{ secrets.AWS_BEDROCK_PRIMARY_MODEL }} \
+              BedrockFallbackModel=${{ secrets.AWS_BEDROCK_FALLBACK_MODEL }}
