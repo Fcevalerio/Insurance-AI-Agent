@@ -21,13 +21,33 @@ Parameters:
     Type: String
     Description: S3 prefix for policies and rules data
     
-  BedrockPrimaryModel:
+  BedrockRouterModel:
     Type: String
     Description: BedRock Model to be used in Agent
+    
+  BedrockSynthModel:
+    Type: String
+    Description: Bedock Model to Synth the response
   
   BedrockFallbackModel:
     Type: String
     Description: Fallback Model for Agent
+  
+  GetPolicyFunction:
+    Type: String
+    Description: Policy Lambda Function
+  
+  CheckDocFunction:
+    Type: String
+    Description: Check Doc Lambda Function
+  
+  GetClaimFunction:
+    Type: String
+    Description: Get Claim Lambda Function
+    
+  DynamoTable:
+    Type: String
+    Description: DymanoDB Storage for LLM Response
 
 Resources:
 
@@ -98,11 +118,13 @@ Resources:
       Runtime: python3.12
       Environment:
         Variables:
-          GET_POLICY_FUNCTION: agent-get-policy-details
-          CHECK_DOC_FUNCTION: agent-check-document-requirements
-          GET_CLAIM_FUNCTION: agent-get-claim-status
-          AWS_BEDROCK_PRIMARY_MODEL: !Ref BedrockPrimaryModel
+          AWS_BEDROCK_ROUTER_MODEL: !Ref BedrockRouterModel
+          AWS_BEDROCK_SYNTH_MODEL: !Ref BedrockSynthModel
           AWS_BEDROCK_FALLBACK_MODEL: !Ref BedrockFallbackModel
+          GET_POLICY_FUNCTION: !Ref GetPolicyDetailsFunction
+          CHECK_DOC_FUNCTION: !Ref CheckDocumentRequirementsFunction
+          GET_CLAIM_FUNCTION: !Ref GetClaimStatusFunction
+          CONVERSATION_TABLE: !Ref DynamoTable
       Policies:
         - LambdaInvokePolicy:
             FunctionName: agent-get-policy-details
@@ -110,10 +132,13 @@ Resources:
             FunctionName: agent-check-document-requirements
         - LambdaInvokePolicy:
             FunctionName: agent-get-claim-status
+        - DynamoDBCrudPolicy:
+            TableName: !Ref DynamoTable
         - Statement:
           - Effect: Allow
             Action:
               - bedrock:InvokeModel
+              - bedrock:InvokeModelWithResponseStream
             Resource: "*"
       Events:
         AgentApi:
@@ -121,6 +146,26 @@ Resources:
           Properties:
             Path: /agent
             Method: post
+
+  #########################################
+  # Dynamo DB for Conversations
+  #########################################
+
+  ConversationTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: northstar-conversations
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+        - AttributeName: timestamp
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+        - AttributeName: timestamp
+          KeyType: RANGE
   
 Outputs:
 

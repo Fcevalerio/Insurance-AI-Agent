@@ -41,4 +41,10 @@ jobs:
               InsuranceDataPrefix=${{ secrets.AWS_INSURANCE_DATA }} \
               AwsRegion=${{ secrets.AWS_REGION }} \
               BedrockPrimaryModel=${{ secrets.AWS_BEDROCK_PRIMARY_MODEL }} \
-              BedrockFallbackModel=${{ secrets.AWS_BEDROCK_FALLBACK_MODEL }}
+              BedrockFallbackModel=${{ secrets.AWS_BEDROCK_FALLBACK_MODEL }} \
+              BedrockRouterModel=${{ secrets.AWS_BEDROCK_ROUTER_MODEL }} \
+              BedrockSynthModel=${{ secrets.AWS_BEDROCK_SYNTH_MODEL }} \
+              GetPolicyFunction=${{ secrets.GET_POLICY_FUNCTION }} \
+              CheckDocFunction=${{ secrets.CHECK_DOC_FUNCTION }} \
+              GetClaimFunction=${{ secrets.GET_CLAIM_FUNCTION }} \
+              ConversationTable=${{ secrets.CONVERSATION_TABLE }}
