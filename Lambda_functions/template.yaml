@@ -30,7 +30,7 @@ Resources:
   GetPolicyDetailsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: northstar-get-policy-details
+      FunctionName: agent-get-policy-details
       CodeUri: get_policy_details/
       Handler: app.lambda_handler
       Environment:
@@ -48,7 +48,7 @@ Resources:
   CheckDocumentRequirementsFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: northstar-check-document-requirements
+      FunctionName: agent-check-document-requirements
       CodeUri: check_document_requirements/
       Handler: app.lambda_handler
       Environment:
@@ -66,7 +66,7 @@ Resources:
   GetClaimStatusFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: northstar-get-claim-status
+      FunctionName: agent-get-claim-status
       CodeUri: get_claim_status/
       Handler: app.lambda_handler
       Environment:
