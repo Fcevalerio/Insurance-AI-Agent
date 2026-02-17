@@ -63,8 +63,8 @@ Resources:
       Handler: app.lambda_handler
       Environment:
         Variables:
-          BUCKET_NAME: !Ref BucketName
-          DATA_PREFIX: !Ref InsuranceDataPrefix
+          AWS_S3_BUCKET_NAME: !Ref BucketName
+          AWS_INSURANCE_DATA: !Ref InsuranceDataPrefix
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref BucketName
@@ -81,8 +81,8 @@ Resources:
       Handler: app.lambda_handler
       Environment:
         Variables:
-          BUCKET_NAME: !Ref BucketName
-          DATA_PREFIX: !Ref InsuranceDataPrefix
+          AWS_S3_BUCKET_NAME: !Ref BucketName
+          AWS_INSURANCE_DATA: !Ref InsuranceDataPrefix
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref BucketName
@@ -99,8 +99,8 @@ Resources:
       Handler: app.lambda_handler
       Environment:
         Variables:
-          BUCKET_NAME: !Ref BucketName
-          CLAIMS_PREFIX: !Ref ClaimsPrefix
+          AWS_S3_BUCKET_NAME: !Ref BucketName
+          AWS_CLAIMS_DATA: !Ref ClaimsPrefix
       Policies:
         - S3ReadPolicy:
             BucketName: !Ref BucketName
