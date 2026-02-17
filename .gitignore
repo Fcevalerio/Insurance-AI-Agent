@@ -142,3 +142,4 @@ __azurite_db*__.json
 *.pptx
 *.pem
 Database_Generation/data
+Documents/
