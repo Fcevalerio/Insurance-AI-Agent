@@ -91,9 +91,9 @@ def index_chunk(chunk_id, text, metadata):
         "metadata": metadata
     }
 
-    url = f"{OPENSEARCH_ENDPOINT}/{INDEX_NAME}/_doc/{chunk_id}"
+    url = f"{OPENSEARCH_ENDPOINT}/{INDEX_NAME}/_doc"
 
-    response = requests.put(
+    response = requests.post(
         url,
         auth=awsauth,
         headers={"Content-Type": "application/json"},
