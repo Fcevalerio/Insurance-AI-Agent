@@ -47,4 +47,4 @@ jobs:
               GetPolicyFunction=${{ secrets.GET_POLICY_FUNCTION }} \
               CheckDocFunction=${{ secrets.CHECK_DOC_FUNCTION }} \
               GetClaimFunction=${{ secrets.GET_CLAIM_FUNCTION }} \
-              ConversationTable=${{ secrets.CONVERSATION_TABLE }}
+              DynamoTable=${{ secrets.CONVERSATION_TABLE }}
