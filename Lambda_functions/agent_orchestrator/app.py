@@ -2,6 +2,7 @@ import json
 import boto3
 import os
 
+s3 = boto3.client("s3")
 lambda_client = boto3.client("lambda")
 bedrock = boto3.client("bedrock-runtime")
 
