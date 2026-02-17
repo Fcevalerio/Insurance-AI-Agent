@@ -49,5 +49,5 @@ jobs:
               GetClaimFunction=${{ secrets.GET_CLAIM_FUNCTION }} \
               DynamoTable=${{ secrets.CONVERSATION_TABLE }} \
               OpenSearchEnpoint=${{ secrets.OPENSEARCH_ENDPOINT }} \
-              RAGIndex=${{ secrets.RAG_INDEX }} \ 
+              RAGIndex=${{ secrets.RAG_INDEX }} \
               RAGFolder=${{ secrets.RAG_FOLDER }}
