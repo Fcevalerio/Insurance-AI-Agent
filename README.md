@@ -1,4 +1,4 @@
-# NorthStar Insurance — AI Claims Assistant
+# 🤖 NorthStar Insurance — AI Claims Assistant
 
 This repository is a polished prototype for an AI-driven insurance claims assistant. It demonstrates how to combine small serverless functions, a RAG ingestion pipeline, and a lightweight web interface to automate policy lookups, claim status checks, and document requirement validation.
 
