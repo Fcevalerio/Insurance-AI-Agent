@@ -1,24 +1,23 @@
-# NorthStar Insurance AI Agent
+# NorthStar Insurance — AI Claims Assistant
 
-## 🤖 Project Overview
+This repository is a polished prototype for an AI-driven insurance claims assistant. It demonstrates how to combine small serverless functions, a RAG ingestion pipeline, and a lightweight web interface to automate policy lookups, claim status checks, and document requirement validation.
 
-NorthStar Insurance AI Agent is an intelligent conversational assistant designed to help insurance customers and agents efficiently handle policy inquiries, claim status checks, and document requirements. Built on AWS serverless architecture, this agent leverages large language models (LLMs) through Amazon Bedrock, Retrieval-Augmented Generation (RAG) using OpenSearch, and a multi-agent orchestration system to provide accurate, context-aware responses.
+Audience: product managers, technical leads, and engineers evaluating a prototype for automated claims processing.
 
-The system processes natural language queries about insurance policies and claims, intelligently routing them to specialized Lambda functions that retrieve relevant data from Amazon S3, while using RAG to provide additional context from policy documents.
+Business benefits:
+- Reduced manual review time through automated checks and contextual answers
+- Faster policy/claim lookup with retrieval-augmented responses
+- Auditability via structured logs and stored conversations
 
-## ✨ Key Features
+## What’s included
+- `Lambda_functions/` — serverless function code and SAM templates
+- `Web_interface/` — demo UI (Streamlit) and Dockerfile
+- `Database_Generation/` — synthetic data generator and sample claim files
+- `Implementation_Doc/` — design and orchestration notes
 
-- **Intelligent Query Routing**: Automatically classifies user intent and routes queries to appropriate specialized functions
-- **Policy Information Retrieval**: Access detailed policy information including coverage limits, deductibles, and customer details
-- **Claim Status Tracking**: Real-time claim status updates and damage estimates
-- **Document Requirements Checking**: Automated verification of required documents based on loss type
-- **Retrieval-Augmented Generation (RAG)**: Enhanced responses using vector search on policy documents
-- **Conversational Memory**: Persistent chat sessions stored in DynamoDB
-- **Multi-Model Architecture**: Router, synthesis, and fallback models for robust AI responses
-- **Serverless Deployment**: Fully managed AWS infrastructure with auto-scaling
-- **Web Interface**: User-friendly Streamlit application for easy interaction
+## High-level Architecture
 
-## 🏗️ Architecture
+The system routes user queries to a lightweight orchestrator that invokes specialized functions (policy lookup, claim status, document checks) and enriches responses using a RAG index and LLM synthesis. The diagrams below show the system components and the end-to-end query flow.
 
 ### System Architecture Diagram
 
@@ -114,201 +113,112 @@ sequenceDiagram
     W->>O: POST /agent with query
     O->>B: Route query to determine intent
     B-->>O: Intent classification
-    
+
     alt Policy Query
         O->>P: Invoke get_policy_details
         P->>P: Fetch from S3
         P-->>O: Policy data
     end
-    
+
     alt Claim Query
         O->>C: Invoke get_claim_status
         C->>C: Fetch from S3
         C-->>O: Claim data
     end
-    
+
     alt Document Query
         O->>D: Invoke check_document_requirements
         D->>D: Fetch from S3
         D-->>O: Document rules
     end
-    
+
     O->>R: Retrieve relevant context
     R-->>O: RAG results
-    
+
     O->>B: Synthesize response
     B-->>O: Final answer
-    
+
     O->>DB: Store conversation
     O-->>W: Return answer
     W-->>U: Display response
 ```
 
-## 🛠️ Technology Stack
+## Technology Snapshot
 
-### Backend & Infrastructure
-- **AWS Lambda**: Serverless compute for all backend functions
-- **Amazon API Gateway**: REST API endpoint management
-- **AWS Serverless Application Model (SAM)**: Infrastructure as Code
-- **Amazon S3**: Data storage for policies, claims, and documents
-- **Amazon OpenSearch**: Vector database for RAG implementation
-- **Amazon DynamoDB**: NoSQL database for conversation storage
-- **Amazon Bedrock**: Managed AI/ML service for LLM access
+- Backend: AWS Lambda, API Gateway, SAM
+- Storage: S3 (documents), DynamoDB (conversations)
+- Search: OpenSearch with embedding-based RAG index
+- AI: Amazon Bedrock (router + synthesis models) and embeddings
+- Frontend: Streamlit demo app (Web_interface)
 
-### AI & ML
-- **Router Model**: `amazon.nova-2-sonic-v1:0` - Classifies user intent
-- **Synthesis Model**: `amazon.nova-2-sonic-v1:0` - Generates final responses
-- **Fallback Model**: `amazon.nova-2-sonic-v1:0` - Backup for failed responses
-- **Embedding Model**: `amazon.titan-embed-text-v2:0` - Text vectorization for RAG
+## Quickstart (Developer)
 
-### Frontend
-- **Streamlit**: Python web application framework
-- **Docker**: Containerization for web interface
+Prerequisites: Python 3.10+, pip, optional Docker for container runs.
 
-### Data Processing
-- **Python 3.12**: Primary programming language
-- **Boto3**: AWS SDK for Python
-- **Requests**: HTTP library for API calls
-- **Faker**: Synthetic data generation
+1) Create virtual environment and install web dependencies
 
-### Development & Deployment
-- **GitHub Actions**: CI/CD pipeline
-- **Docker**: Container orchestration
-- **AWS SAM CLI**: Local development and testing
-
-## 📁 Project Structure
-
-```
-├── Database_Generation/           # Synthetic data generation
-│   ├── generate_data.py          # Main data generation script
-│   ├── data/                     # Generated data files
-│   │   ├── policies.json         # Insurance policy data
-│   │   ├── document_rules.json   # Document requirements by loss type
-│   │   └── claims/               # Individual claim JSON files
-│   └── Insurance claims data.csv # Raw claims data
-├── Documents/                    # Policy documents and manuals
-├── Lambda_functions/             # AWS Lambda function code
-│   ├── template.yaml             # SAM deployment template
-│   ├── agent_orchestrator/       # Main agent orchestration logic
-│   ├── get_policy_details/       # Policy information retrieval
-│   ├── get_claim_status/         # Claim status checking
-│   ├── check_document_requirements/ # Document requirements validation
-│   └── rag_ingestion/            # Document ingestion for RAG
-├── Web_interface/                # Streamlit web application
-│   ├── app.py                    # Main web app
-│   ├── requirements.txt          # Python dependencies
-│   └── Dockerfile                # Docker container config
-├── requirements.txt              # Project-wide Python dependencies
-└── .env                          # Environment variables (AWS credentials, etc.)
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r Web_interface/requirements.txt
 ```
 
-## 🚀 Setup & Installation
+2) Run the web demo locally
 
-### Prerequisites
-
-- **Python 3.12** or higher
-- **AWS CLI** configured with appropriate permissions
-- **AWS SAM CLI** for local development
-- **Docker** for containerized deployment
-- **Git** for version control
-
-### 1. Clone the Repository
-
-```bash
-git clone <repository-url>
-cd northstar-insurance-ai-agent
-```
-
-### 2. Environment Configuration
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# AWS Credentials for GitHub Actions (Access Key and Secret Access Key)
-AWS_ACCOUNT_ID=your-account-id
-AWS_ACCESS_KEY=your-access-key
-AWS_SECRET_ACCESS_KEY=your-secret-key
-AWS_REGION=eu-north-1
-
-# S3 Bucket and Folder Names
-AWS_S3_BUCKET_NAME=your-bucket-name
-AWS_INSURANCE_DATA=data
-AWS_CLAIMS_DATA=claims
-
-# AWS Bedrock Configuration
-AWS_BEDROCK_ROUTER_MODEL=amazon.nova-2-sonic-v1:0
-AWS_BEDROCK_SYNTH_MODEL=amazon.nova-2-sonic-v1:0
-AWS_BEDROCK_FALLBACK_MODEL=amazon.nova-2-sonic-v1:0
-
-# OpenSearch
-OPENSEARCH_ENDPOINT=https://your-opensearch-endpoint
-RAG_INDEX=insurance-rag-index
-
-# API Settings
-EC2_ELASTIC_IP=your-ec2-ip
-AGENT_API=https://your-api-gateway-url/Prod/agent
-CONVERSATION_TABLE=northstar-conversations
-```
-
-### 3. Install Dependencies
-
-```bash
-# Install project-wide dependencies
-pip install -r requirements.txt
-
-# Install web interface dependencies
+```powershell
 cd Web_interface
-pip install -r requirements.txt
-cd ..
+python app.py
+# Open http://localhost:8000 (or port printed by the app)
 ```
 
-### 4. Generate Synthetic Data
+3) Run an individual function for testing
 
-```bash
-cd Database_Generation
-python generate_data.py
+```powershell
+cd Lambda_functions/check_document_requirements
+python app.py
 ```
 
-This will create:
-- `data/policies.json`: 50 insurance policies
-- `data/claims/`: 300 individual claim files
-- `data/document_rules.json`: Document requirements mapping
+Notes:
+- Many functions include a small `app.py` for local testing; install any `requirements.txt` in the function folder before running.
+- Synthetic data is in `Database_Generation/data/` and can be regenerated with `Database_Generation/generate_data.py`.
 
-### 5. Deploy AWS Infrastructure
+## Deployment Guidance (Production Considerations)
 
-```bash
-cd Lambda_functions
+- Replace local JSON files with secure data stores (S3, managed DB)
+- Use a secrets manager for model and API keys
+- Add authentication and RBAC for the web UI and APIs
+- Implement monitoring and structured logging for audit trails
+- Harden the RAG pipeline: provenance, answer attribution, and human-in-the-loop review
 
-# Build and deploy SAM application
-sam build
-sam deploy --guided
+## Project Layout
+
+```
+Database_Generation/      # Synthetic data generation
+Lambda_functions/         # Serverless handlers and SAM template
+Web_interface/            # Streamlit demo and Dockerfile
+Implementation_Doc/       # Architecture and design notes
+requirements.txt          # Optional project-level deps
+.env                      # Local environment variables (not checked in)
 ```
 
-The deployment will create:
-- Lambda functions for each service
-- API Gateway with `/agent` endpoint
-- DynamoDB table for conversations
-- Required IAM roles and policies
+## Contributing
 
-## 🔧 Configuration
+Preferred workflow:
+1. Fork the repo, create a feature branch
+2. Add focused unit tests for new behavior
+3. Open a pull request with a short description and testing steps
 
-### AWS Services Setup
+## Contact
 
-1. **S3 Bucket**: Create a bucket and upload the generated data files
-2. **OpenSearch**: Set up an OpenSearch Serverless collection
-3. **Bedrock**: Ensure access to required models
-4. **DynamoDB**: Table created automatically by SAM
-5. **API Gateway**: Endpoint URL provided after deployment
+Open an issue in the repository with feature requests or questions, or contact the project owner for product discussions.
 
-### Environment Variables
+---
 
-All configuration is managed through environment variables. Key settings:
+If you want, I can:
+- Add a minimal CI workflow to run tests on PRs
+- Create a `Makefile` or task runner for common developer flows
+- Produce cloud-specific deployment instructions (AWS / Azure)
 
-- **Model Configuration**: Adjust `AWS_BEDROCK_*_MODEL` for different AI models
-- **Data Paths**: Modify `AWS_INSURANCE_DATA` and `AWS_CLAIMS_DATA` for different S3 prefixes
-- **RAG Settings**: Configure `RAG_INDEX` and `OPENSEARCH_ENDPOINT` for search functionality
-
-## 📖 Usage
 
 ### Web Interface
 
