@@ -143,3 +143,5 @@ __azurite_db*__.json
 *.pem
 Database_Generation/data
 Documents/
+Local_Testing_DB/
+Web_interface/app_local_testing.py
